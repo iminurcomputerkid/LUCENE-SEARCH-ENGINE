@@ -1,0 +1,163 @@
+package edu.siena.csis225.projects25;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.text.Normalizer;
+
+/**
+ * Splits the combined Cranfield data into individual text files.
+ * Each individual text file is ordered by a document number and contains
+ * a title and author along with contents.
+ * @version 4/3/2025
+ * @author Julien, Riley, Zi’Aire
+ */
+public class CranfieldMagic {
+
+    /**
+     * Cleans the Cranfield data and reports status.
+     */
+    public static void main(String[] args) {
+        try {
+            magicClean();
+            System.out.println("Cranfield data has been cleaned.");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Reads the original file and breaks it into separate documents, and writes to a new 
+     * folder cranfieldCleaned. It recognizes markers for document no. [.I], title [.T], author [.A], and content [.W],
+     * it reads contents for a specific file until another .I is detected, which marks the beginning of the next file
+     * @throws IOException if error occurs during reading or writing process
+     */
+    public static void magicClean() throws IOException {
+        File src = new File("./cranfield/cranfieldData.txt");
+        if (!src.exists()) {
+            System.err.println("cranfieldData.txt not found.");
+            return;
+        }
+
+        File outputDir = new File("./cranfieldCleaned");
+        if (!outputDir.exists()) {
+            outputDir.mkdirs();
+        } else {
+            for (File f : outputDir.listFiles()) {
+                f.delete();
+            }
+        }
+
+        String whole = Files.readString(src.toPath());
+        whole = asciiConverter(whole);
+
+        String[] chunks = whole.split("(?m)^\\.I\\s");
+
+        for (String chunk : chunks) {
+            if (chunk.isBlank()) continue;
+
+            String[] lines = chunk.split("\\R");
+            String docNum = lines[0].trim();
+
+            StringBuilder titleBuf   = new StringBuilder();
+            String author            = "";
+            StringBuilder contentBuf = new StringBuilder();
+            boolean title            = false;
+            boolean content          = false;
+
+            for (int i = 1; i < lines.length; i++) {
+                String ln = lines[i];
+                if (ln.startsWith(".T")) {
+                    title   = true;
+                    content = false;
+                    continue;
+                }
+                if (ln.startsWith(".A")) {
+                    title   = false;
+                    content = false;
+                    if (i + 1 < lines.length) {
+                        author = lines[++i].trim();
+                    }
+                    continue;
+                }
+                if (ln.startsWith(".B")) {
+                    i++;
+                    continue;
+                }
+                if (ln.startsWith(".W")) {
+                    title   = false;
+                    content = true;
+                    continue;
+                }
+                if (title) {
+                    titleBuf.append(ln).append(" ");
+                }
+                if (content) {
+                    contentBuf.append(ln).append("\n");
+                }
+            }
+
+            outputDoc(outputDir, docNum, titleBuf.toString(), author, cleanContent(contentBuf.toString()));
+        }
+    }
+
+    /**
+     * Replaces extended-ASCII characters (128–255) with ASCII equivalents
+     * @param text, raw text
+     * @return normalized ASCII-only text
+     */
+    private static String asciiConverter(String text) {
+        text = text.replace("\u00BC", "1/4")
+                   .replace("\u00BD", "1/2")
+                   .replace("\u00BE", "3/4");
+        String decomposed = Normalizer.normalize(text, Normalizer.Form.NFD);
+        return decomposed.replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
+    }
+
+    /**
+     * Joins lines that do not end with a period with the next line so sentences remain intact.
+     * @param raw, raw text with line breaks
+     * @return cleaned string with intact sentences
+     */
+    private static String cleanContent(String raw) {
+        String[] lines = raw.split("\n");
+        StringBuilder cleaned = new StringBuilder();
+
+        for (int i = 0; i < lines.length; i++) {
+            String cur = lines[i].trim();
+            if (cur.isEmpty()) continue;
+            while (!cur.endsWith(".") && i + 1 < lines.length) {
+                cur += " " + lines[++i].trim();
+            }
+            if (cur.endsWith(".")) {
+                cleaned.append(cur).append("\n");
+            } else {
+                cleaned.append(cur).append(" ");
+            }
+        }
+
+        return cleaned.toString().trim();
+    }
+
+    /**
+     * Writes document files with a specific number into the given folder. 
+     * Files start with a title, then author, and finally content.
+     * @param folder, the directory to write to
+     * @param docNum, document number used to identify that entry
+     * @param title, the document's title
+     * @param author, the document's author
+     * @param content, the cleaned content
+     * @throws, IOException if writing fails
+     */
+    private static void outputDoc(File folder, String docNum, String title, String author, String content) throws IOException {
+        String finalTitle = title.replaceAll("\\s+", " ").trim();
+        File outFile = new File(folder, docNum + ".txt");
+        try (PrintWriter pw = new PrintWriter(new FileWriter(outFile))) {
+            pw.println("Title: " + finalTitle);
+            pw.println("Author: " + author);
+            pw.println(content);
+        }
+    }
+}
