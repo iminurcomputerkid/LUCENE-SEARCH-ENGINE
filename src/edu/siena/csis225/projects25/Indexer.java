@@ -29,7 +29,7 @@ import java.nio.file.Paths;
 import java.util.*;
 
 /**
- * Indexes a directory of text files into Lucene indices.
+ * Indexes a directory of text files into Lucene indices and ouptuts indices to a file named IndexedData.
  * @version 4/5/2025
  * @author Julien, Riley, Zi’Aire
  */
