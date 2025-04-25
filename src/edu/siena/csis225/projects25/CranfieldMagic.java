@@ -41,7 +41,7 @@ public class CranfieldMagic {
             return;
         }
 
-        File outputDir = new File("./cranfieldCleaned");
+        File outputDir = new File("./cranfieldSeparated");
         if (!outputDir.exists()) {
             outputDir.mkdirs();
         } else {
