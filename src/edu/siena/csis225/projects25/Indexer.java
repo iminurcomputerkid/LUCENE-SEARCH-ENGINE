@@ -19,6 +19,8 @@ import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.Bits;
+import java.nio.file.Paths;
+
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -74,6 +76,9 @@ public class Indexer {
             System.out.println("Added:   "+stats.newDocs);
             System.out.println("Updated: "+stats.updatedDocs);
             System.out.println("Removed: "+stats.deletedDocs);
+           try (DirectoryReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(outIndexFolder)))) {
+                System.out.println("Total Docs:  " + reader.numDocs());
+            }
             System.out.println("Duration: "+(indexTimeEnd-indexTimeBegin)+" ms");
         } catch(IOException e) {
             e.printStackTrace();
