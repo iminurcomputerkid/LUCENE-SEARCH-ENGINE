@@ -1,14 +1,13 @@
 package edu.siena.csis225.projects25;
 
 import java.io.File;
-import java.util.Scanner;
 import javax.swing.SwingUtilities;
 
 /** 
  * Depending on the presence of the “-text” flag in CLI argument, this class will either launch
  * the command‐line or GUI search interface. also prompts
  * user to choose between Gutenberg or Cranfield data for searching
- 
+ * 
  * @version 4/11/2025
  * @author Julien, Riley, Zi’Aire
  */
@@ -18,64 +17,57 @@ public class Main {
      * @param args 
      */
     public static void main(String[] args) {
-        String folderPath = "./data";         
-        String idxFolder = "./IndexedData";     
-        String idxMode = null;                 
-        boolean launchGUI = true;             
-        boolean showExplanations = false;       
-        int maxOutResults = 5;                  
+        String folderPath       = "./data";         
+        String idxFolder        = "./IndexedData";     
+        String idxMode          = null;                 
+        boolean launchGUI       = true;             
+        boolean showExplanations= false;       
+        int maxOutResults   = 5;                  
+        boolean isGutenbergFormat = true;
 
-        //if -text passed through, set gui to false to launch cli
+        // check flags: -text for CLI, -cran for Cranfield
         for (String arg : args) {
             if ("-text".equalsIgnoreCase(arg)) {
                 launchGUI = false;
             }
+            else if ("-cran".equalsIgnoreCase(arg)) {
+                isGutenbergFormat = false;
+            }
         }
-        
-        // ensure the indexedData folder exists
+
+        // ensure the IndexedData folder exists
         File idxDirObj = new File(idxFolder);
         if (!idxDirObj.exists()) {
             idxDirObj.mkdirs();
         }
 
-        //config
+        // configuration
         System.out.println("Data Folder: " + folderPath);
         System.out.println("Index Folder: " + idxFolder);
         System.out.println("Index Mode: " + (idxMode == null ? "all" : idxMode));
+        System.out.println(isGutenbergFormat 
+            ? "Gutenberg data selected." 
+            : "Cranfield data selected.");
+        System.out.println("loading.... please wait");
 
-        // prompts user to enter in data format
-        Scanner kbReader = new Scanner(System.in);
-        System.out.println("Select data format: Enter 'G' for gutenberg or 'C' for cranfield:");
-        String opt = kbReader.nextLine().trim();
-
-        boolean isGutenbergFormat;
-        if (opt.equalsIgnoreCase("C")) {
-            System.out.println("Cranfield format selected. Running CranfieldMagic..");
+        // if Cranfield requested, run cleaner first
+        if (!isGutenbergFormat) {
+            System.out.println("Running CranfieldMagic...");
             try {
                 CranfieldMagic.magicClean();
-                //after cleaning, set folderpath to cleaned cranfield data
-                folderPath = "./cranfieldCleaned";
+                folderPath = "./cranfieldSeparated";
             } catch (Exception ex) {
-                System.err.println("error seperating cranfield: " + ex.getMessage());
-                kbReader.close();
+                System.err.println("error separating cranfield: " + ex.getMessage());
                 return;
             }
-            isGutenbergFormat = false;
-        } else {
-            isGutenbergFormat = true;
         }
-
-        System.out.println("____Final settings____");
-        System.out.println("Data Folder: " + folderPath);
-        System.out.println("Index Folder: " + idxFolder);
-        System.out.println("Index Mode: " + (idxMode == null ? "all" : idxMode));
-        System.out.println(isGutenbergFormat ? "Gutenberg format active." : "Cranfield format active.");
 
         // index
         Indexer.run(folderPath, idxFolder, idxMode, isGutenbergFormat);
 
+        // launch search UI
         if (launchGUI) {
-            // launch Swing-based GUI
+            // launch GUI
             SwingUtilities.invokeLater(() -> {
                 try {
                     new GUI(idxFolder, showExplanations, maxOutResults).setVisible(true);
@@ -91,6 +83,5 @@ public class Main {
                 ex.printStackTrace();
             }
         }
-        kbReader.close();
     }
 }
