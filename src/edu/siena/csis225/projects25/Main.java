@@ -2,6 +2,8 @@ package edu.siena.csis225.projects25;
 
 import java.io.File;
 import javax.swing.SwingUtilities;
+import java.nio.file.Paths;
+
 
 /** 
  * Depending on the presence of the “-text” flag in CLI argument, this class will either launch
@@ -13,7 +15,8 @@ import javax.swing.SwingUtilities;
  */
 public class Main {
     /**
-     * main method, parses cli arguments to detect -text flag for cli and gui by default, prompts for data to be searched (cranfield or gutenberg)
+     * main method, parses cli arguments to detect -text flag for cli and gui by default, detects -cran flag to run cranfield or guteberg without it, and 
+     * -parallel flag to run parallel indexer and normal indexer without it
      * @param args 
      */
     public static void main(String[] args) {
@@ -24,14 +27,30 @@ public class Main {
         boolean showExplanations= false;       
         int maxOutResults   = 5;                  
         boolean isGutenbergFormat = true;
+        boolean isParallel = false;
+        String cranQAfile = null;
 
-        // check flags: -text for CLI, -cran for Cranfield
-        for (String arg : args) {
-            if ("-text".equalsIgnoreCase(arg)) {
-                launchGUI = false;
-            }
-            else if ("-cran".equalsIgnoreCase(arg)) {
-                isGutenbergFormat = false;
+        // check flags: -text for CLI, -cran for Cranfield, -parallel for parallel indexing (also under -cran case sets
+        //cranQAfile to QA file passed in as argument)
+            for (int i = 0; i < args.length; i++) {
+            switch (args[i].toLowerCase()) {
+                case "-text":
+                    launchGUI = false;
+                    break;
+                case "-parallel":
+                    isParallel = true;
+                    break;
+                case "-cran":
+                    isGutenbergFormat = false;
+                    if (i + 1 < args.length) {
+                        cranQAfile = args[++i];
+                    } else {
+                        System.out.println("Error: -cran requires a QA file path");
+                        return;
+                    }
+                    break;
+                default:
+                    // ignore unknown flags or handle other options here
             }
         }
 
@@ -56,18 +75,46 @@ public class Main {
             try {
                 CranfieldMagic.magicClean();
                 folderPath = "./cranfieldSeparated";
+                File indexDir = new File(idxFolder);
+                if (indexDir.exists()) {
+                    for (File f : indexDir.listFiles()) {
+                        f.delete();
+                    }
+              }
             } catch (Exception ex) {
                 System.err.println("error separating cranfield: " + ex.getMessage());
                 return;
             }
         }
+        //if parallel selected, run parallel indexer, if not, run normal indexer
+         if (isParallel) {
+                int numThreads  = Runtime.getRuntime().availableProcessors() + 1;
+                int maxQueueSize  = numThreads * 4;
+            PIndexer.run(folderPath,idxFolder,idxMode,isGutenbergFormat,numThreads,maxQueueSize);
+        } else {
+             //index normally
+            Indexer.run(folderPath, idxFolder, idxMode, isGutenbergFormat);
+        }
+         //for QA bonus, runs cranfieldQAEvaluator if cranQAfile not null and not gui 
+         if (!launchGUI && cranQAfile != null) {
+            // look for ground truth right next to the QA file
+            java.nio.file.Path qaPath    = java.nio.file.Paths.get(cranQAfile);
+            java.nio.file.Path parentDir = qaPath.getParent();
+            String truthPath = (parentDir != null
+                                 ? parentDir.resolve("cranfieldGroundTruth.txt").toString()
+                                 : "cranfieldGroundTruth.txt");
 
-        // index
-        Indexer.run(folderPath, idxFolder, idxMode, isGutenbergFormat);
-
+            try {
+                CranfieldQAEvaluator.run(cranQAfile, idxFolder, truthPath);
+            } catch (Exception e) {
+                System.err.println("Error during Cranfield QA evaluation: " + e.getMessage());
+                e.printStackTrace();
+                System.exit(1);
+            }
+            return;
+        }
         // launch search UI
         if (launchGUI) {
-            // launch GUI
             SwingUtilities.invokeLater(() -> {
                 try {
                     new GUI(idxFolder, showExplanations, maxOutResults).setVisible(true);
