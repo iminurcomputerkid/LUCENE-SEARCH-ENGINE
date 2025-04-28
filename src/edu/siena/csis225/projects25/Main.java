@@ -42,12 +42,6 @@ public class Main {
                     break;
                 case "-cran":
                     isGutenbergFormat = false;
-                    if (i + 1 < args.length) {
-                        cranQAfile = args[++i];
-                    } else {
-                        System.out.println("Error: -cran requires a QA file path");
-                        return;
-                    }
                     break;
                 default:
                     // ignore unknown flags or handle other options here
