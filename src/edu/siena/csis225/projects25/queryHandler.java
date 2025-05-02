@@ -23,14 +23,6 @@ import java.util.Set;
 public class queryHandler {
 
    private static final String[] SEARCH_FIELDS = new String[]{"content", "stemcontent", "stopcontent", "author", "title", "filepath", "modified", "filename"};
-   private static final Map<String,Float> FIELD_BOOSTS = new HashMap<>();
-    static {
-      FIELD_BOOSTS.put("title",       3.0f);
-      FIELD_BOOSTS.put("author",      2.0f);
-      FIELD_BOOSTS.put("content",     1.0f);
-      FIELD_BOOSTS.put("stemcontent", 0.75f);
-      FIELD_BOOSTS.put("stopcontent", 0.50f);
-    }
     
     private Analyzer analyzer;
     private String inputQuery;
