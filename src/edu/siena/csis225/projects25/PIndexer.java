@@ -197,11 +197,11 @@ public class PIndexer {
         doc.add(new TextField("content", full, TextField.Store.YES));
         doc.add(new TextField("stemcontent", Indexer.stem(full), TextField.Store.YES));
         doc.add(new TextField("stopcontent", Indexer.removeStops(full), TextField.Store.YES));
-        doc.add(new StringField("author", author.isEmpty() ? "Unknown" : author, StringField.Store.YES));
-        doc.add(new StringField("title", title.isEmpty() ? file.getName() : title, StringField.Store.YES));
-        doc.add(new StringField("filename", file.getName(), StringField.Store.YES));
-        doc.add(new StringField("filepath", file.getAbsolutePath(), StringField.Store.YES));
-        doc.add(new StringField("modified", Long.toString(file.lastModified()), StringField.Store.YES));
+        doc.add(new TextField("author", author.isEmpty() ? "Unknown" : author, StringField.Store.YES));
+        doc.add(new TextField("title", title.isEmpty() ? file.getName() : title, StringField.Store.YES));
+        doc.add(new TextField("filename", file.getName(), StringField.Store.YES));
+        doc.add(new TextField("filepath", file.getAbsolutePath(), StringField.Store.YES));
+        doc.add(new TextField("modified", Long.toString(file.lastModified()), StringField.Store.YES));
         return doc;
     }
 }
