@@ -36,8 +36,8 @@ public class CranfieldQAEvaluator {
         var reader = DirectoryReader.open(dir);
         var searcher = new IndexSearcher(reader);
         
-        //use BM25Similarity for socring and ranking rauther than ClassicSimilarity
-        searcher.setSimilarity(new org.apache.lucene.search.similarities.BM25Similarity());
+        //use Classic Similarity for socring and ranking rauther than ClassicSimilarity
+        searcher.setSimilarity(new org.apache.lucene.search.similarities.ClassicSimilarity());
         var analyzer = new StandardAnalyzer();
 
         //read and parse QA file line by line
