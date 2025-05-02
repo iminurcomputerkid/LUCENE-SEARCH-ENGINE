@@ -96,7 +96,7 @@ public class Indexer {
      * @return, a Stats object reporting the total count of added, updated, and deleted docs
      * @throws, IOException if index or file input or output fails
      */
-    private static Stats indexFiles(String inFolder, String outIndexFolder, String mode, boolean isGutenberg) throws IOException {
+    public static Stats indexFiles(String inFolder, String outIndexFolder, String mode, boolean isGutenberg) throws IOException {
         Directory dir = FSDirectory.open(Paths.get(outIndexFolder));
         StandardAnalyzer analyzer = new StandardAnalyzer();
         IndexWriterConfig cfg = new IndexWriterConfig(analyzer);
@@ -211,11 +211,11 @@ public class Indexer {
         doc.add(new TextField("content",full,TextField.Store.YES));
         doc.add(new TextField("stemcontent",stemmed,TextField.Store.YES));
         doc.add(new TextField("stopcontent",filtered,TextField.Store.YES));
-        doc.add(new StringField("author",auth.isEmpty()?"Unknown":auth,StringField.Store.YES));
-        doc.add(new StringField("title",ttl.isEmpty()?file.getName():ttl,StringField.Store.YES));
-        doc.add(new StringField("filename",file.getName(),StringField.Store.YES));
-        doc.add(new StringField("filepath",file.getAbsolutePath(),StringField.Store.YES));
-        doc.add(new StringField("modified",Long.toString(file.lastModified()),StringField.Store.YES));
+        doc.add(new TextField("author",auth.isEmpty()?"Unknown":auth,StringField.Store.YES));
+        doc.add(new TextField("title",ttl.isEmpty()?file.getName():ttl,StringField.Store.YES));
+        doc.add(new TextField("filename",file.getName(),StringField.Store.YES));
+        doc.add(new TextField("filepath",file.getAbsolutePath(),StringField.Store.YES));
+        doc.add(new TextField("modified",Long.toString(file.lastModified()),StringField.Store.YES));
         return doc;
     }
 
@@ -226,7 +226,7 @@ public class Indexer {
      * @return, string containing stemmed tokens seperated by space
      * @throws, IOException if stemming fails during processing
      */
-    private static String stem(String input) throws IOException {
+    public static String stem(String input) throws IOException {
         StandardTokenizer tokenizer = new StandardTokenizer();
         tokenizer.setReader(new StringReader(input));
         TokenStream ts = new LowerCaseFilter(tokenizer);
@@ -245,7 +245,7 @@ public class Indexer {
      * @param input, the raw text to be filtered
      * @return, a string containing text with stop words removed, separated by a space
      */
-    private static String removeStops(String input) {
+    public static String removeStops(String input) {
         StringBuilder sb = new StringBuilder();
         for (String t: input.split("\\W+"))
             if (!t.isEmpty() && !STOP_WORDS.contains(t.toLowerCase()))
