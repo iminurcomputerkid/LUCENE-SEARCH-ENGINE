@@ -37,177 +37,202 @@ import java.util.*;
  */
 public class Indexer {
 
-    //stop‑word list
-    private static final Set<String> STOP_WORDS = new HashSet<>(Arrays.asList("the","a","an","is","of","and","or","in","to"));
+    //list of common stop-words
+    private static final Set<String> STOP_WORDS = new HashSet<>(Arrays.asList(
+        "the","a","an","is","of","and","or","in","to"
+    ));
 
     /**
-     * class used to track statistics relevant to indexing.
+     * Tracks count of docs added, updated, and deleted.
      */
     static class Stats {
-        int newDocs;
-        int updatedDocs;
-        int deletedDocs;
-        Stats() { newDocs = 0; updatedDocs = 0; deletedDocs = 0; }
+        int newDocs;      
+        int updatedDocs; 
+        int deletedDocs;  
+        Stats() { 
+            newDocs = 0; updatedDocs = 0; deletedDocs = 0; 
+        }
     }
 
     /**
-     * runs indexer and reports statistics.
-     *
-     * @param inFolder, input folder storing .txt files
-     * @param outIndexFolder, folder to write Lucene indices
-     * @param indexingMode, one of "new", "changed", "missing", or null for all
-     * @param isGutenberg, controls whether to extract only Gutenberg block
+     * Runs the indexer and prints statistics
+     * @param inFolder, input folder with .txt files
+     * @param outIndexFolder, output directory for Lucene index
+     * @param indexingMode, "new", "changed", "missing", or null for all
+     * @param isGutenberg, if true, restrict content to Gutenberg block
      */
     public static void run(String inFolder, String outIndexFolder, String indexingMode, boolean isGutenberg) {
-        if (inFolder==null||outIndexFolder==null) {
+        // validate arguments
+        if (inFolder == null || outIndexFolder == null) {
             System.out.println("to index, enter: java -jar indexer.jar <inputFolder> <outputFolder>");
             return;
         }
-        String modeKey = (indexingMode==null?"all":indexingMode.toLowerCase());
+        //determine mode key (all by default)
+        String modeKey = (indexingMode == null ? "all" : indexingMode.toLowerCase());
         if (!Arrays.asList("all","new","changed","missing").contains(modeKey)) {
-            System.out.println("Invalid mode: "+indexingMode);
+            System.out.println("Invalid mode: " + indexingMode);
             return;
         }
         try {
+            //record start time
             long indexTimeBegin = System.currentTimeMillis();
-            Stats stats = indexFiles(inFolder,outIndexFolder,modeKey,isGutenberg);
+            //perform indexing
+            Stats stats = indexFiles(inFolder, outIndexFolder, modeKey, isGutenberg);
+            //end time
             long indexTimeEnd = System.currentTimeMillis();
+            //output summary stats
             System.out.println("Indexing done.");
-            System.out.println("Added:   "+stats.newDocs);
-            System.out.println("Updated: "+stats.updatedDocs);
-            System.out.println("Removed: "+stats.deletedDocs);
-           try (DirectoryReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(outIndexFolder)))) {
+            System.out.println("Added:   " + stats.newDocs);
+            System.out.println("Updated: " + stats.updatedDocs);
+            System.out.println("Removed: " + stats.deletedDocs);
+            try (DirectoryReader reader = DirectoryReader.open(
+                    FSDirectory.open(Paths.get(outIndexFolder)))) {
                 System.out.println("Total Docs:  " + reader.numDocs());
             }
-            System.out.println("Duration: "+(indexTimeEnd-indexTimeBegin)+" ms");
-        } catch(IOException e) {
-            e.printStackTrace();
+            System.out.println("Duration: " + (indexTimeEnd - indexTimeBegin) + " ms");
+        } catch (IOException e) {
+            e.printStackTrace(); //print stack trace if error occurs
         }
     }
 
     /**
-     * Parses through the files inside input folder and adds, updates, or deletes
-     * documents in Lucene index depending on specified mode.
-     *
-     * @param inFolder, path to the directory of .txt files
-     * @param outIndexFolder, path to folder that stores output of Lucene indices
-     * @param mode, "all","new","changed",or "missing"
-     * @param isGutenberg, true if indexing should be limited to Gutenberg block
-     * @return, a Stats object reporting the total count of added, updated, and deleted docs
-     * @throws, IOException if index or file input or output fails
+     * Indexes, updates, or deletes documents based on mode
+     * @param inFolder, path to .txt files
+     * @param outIndexFolder, path to Lucene index directory
+     * @param mode, indexing mode: "all","new","changed","missing"
+     * @param isGutenberg, if true, limit to Gutenberg block
+     * @return Stats object with operation counts
+     * @throws IOException I/O errors
      */
     public static Stats indexFiles(String inFolder, String outIndexFolder, String mode, boolean isGutenberg) throws IOException {
+        //open or create index directory
         Directory dir = FSDirectory.open(Paths.get(outIndexFolder));
         StandardAnalyzer analyzer = new StandardAnalyzer();
         IndexWriterConfig cfg = new IndexWriterConfig(analyzer);
-        cfg.setSimilarity(new ClassicSimilarity());
-        IndexWriter writer = new IndexWriter(dir,cfg);
-        Stats stats = new Stats();
+        cfg.setSimilarity(new ClassicSimilarity()); //use TF-IDF similarity
+        IndexWriter writer = new IndexWriter(dir, cfg);
+        Stats stats = new Stats(); //initialize stats tracker
 
-        Map<String,Long> indexed = new HashMap<>();
+        //load existing index metadata: filepath'a last modified timestamp
+        Map<String, Long> indexed = new HashMap<>();
         if (DirectoryReader.indexExists(dir)) {
             DirectoryReader rdr = DirectoryReader.open(dir);
             for (LeafReaderContext ctx : rdr.leaves()) {
                 LeafReader lr = ctx.reader();
                 Bits live = lr.getLiveDocs();
-                for (int i=0;i<lr.maxDoc();i++) {
-                    if (live!=null&&!live.get(i)) continue;
+                for (int i = 0; i < lr.maxDoc(); i++) {
+                    //skip deleted docs
+                    if (live != null && !live.get(i)) continue;
                     Document d = lr.document(i);
-                    String path = d.get("filepath"), modStr = d.get("modified");
-                    if (path!=null&&modStr!=null) indexed.put(path,Long.valueOf(modStr));
+                    String path = d.get("filepath");
+                    String modStr = d.get("modified");
+                    if (path != null && modStr != null) {
+                        indexed.put(path, Long.valueOf(modStr));
+                    }
                 }
             }
             rdr.close();
         }
 
+        //list .txt files in input folder
         File folder = new File(inFolder);
-        File[] files = folder.listFiles((d,n)->n.toLowerCase().endsWith(".txt"));
+        File[] files = folder.listFiles((d, n) -> n.toLowerCase().endsWith(".txt"));
         Set<String> visited = new HashSet<>();
-        if (files!=null) {
-            for (File f:files) {
+        if (files != null) {
+            for (File f : files) {
                 String fp = f.getAbsolutePath();
-                visited.add(fp);
-                long oldMod = indexed.getOrDefault(fp,-1L);
-                switch(mode) {
+                visited.add(fp); // mark as seen
+                long oldMod = indexed.getOrDefault(fp, -1L);
+                //switch based on index mode
+                switch (mode) {
                     case "all" -> {
-                        if (oldMod<0) {
-                            writer.addDocument(buildDoc(f,isGutenberg));
+                        if (oldMod < 0) {
+                            //new file: add to index
+                            writer.addDocument(buildDoc(f, isGutenberg));
                             stats.newDocs++;
-                        } else if (f.lastModified()>oldMod) {
-                            writer.updateDocument(new Term("filepath",fp),buildDoc(f,isGutenberg));
+                        } else if (f.lastModified() > oldMod) {
+                            //modified file: update existing doc
+                            writer.updateDocument(new Term("filepath", fp), buildDoc(f, isGutenberg));
                             stats.updatedDocs++;
                         }
                     }
                     case "new" -> {
-                        if (oldMod<0) {
-                            writer.addDocument(buildDoc(f,isGutenberg));
+                        if (oldMod < 0) {
+                            writer.addDocument(buildDoc(f, isGutenberg));
                             stats.newDocs++;
                         }
                     }
                     case "changed" -> {
-                        if (oldMod>=0&&f.lastModified()>oldMod) {
-                            writer.updateDocument(new Term("filepath",fp),buildDoc(f,isGutenberg));
+                        if (oldMod >= 0 && f.lastModified() > oldMod) {
+                            writer.updateDocument(new Term("filepath", fp), buildDoc(f, isGutenberg));
                             stats.updatedDocs++;
                         }
                     }
                     case "missing" -> {
-                        //deletion handled later
+                        //deletion handled below
                     }
                 }
             }
         }
 
+        //if mode is "missing", delete docs for files no longer present
         if ("missing".equals(mode)) {
-            for (String path:indexed.keySet()) {
+            for (String path : indexed.keySet()) {
                 if (!visited.contains(path)) {
-                    writer.deleteDocuments(new Term("filepath",path));
+                    writer.deleteDocuments(new Term("filepath", path));
                     stats.deletedDocs++;
                 }
             }
         }
 
-        writer.commit();
-        writer.close();
+        writer.commit(); //commit all changes
+        writer.close();  //close writer
         return stats;
     }
 
     /**
-     * Reads a file, and extracts text and builds Lucene Document with required fields.
+     * Builds a Lucene Document from a text file, extracting metadata and content fields.
      * @param file, the text file to index
-     * @param isGutenberg, true to restrict content extraction to Gutenberg block
-     * @return, a Document, the constructed Lucene Document
-     * @throws, IOException if reading the file fails
+     * @param isGutenberg, restrict content if Gutenberg mode
+     * @return constructed Lucene Document
+     * @throws IOException during read errors
      */
     private static Document buildDoc(File file, boolean isGutenberg) throws IOException {
         Document doc = new Document();
-        StringBuilder text = new StringBuilder();
-        String auth = "", ttl = "";
+        StringBuilder text = new StringBuilder(); // collect file content
+        String auth = ""; //author 
+        String ttl = "";  //title 
+        //flag to indicate when to capture lines
         boolean inBlock = !isGutenberg;
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             String ln;
-            while ((ln=br.readLine())!=null) {
+            while ((ln = br.readLine()) != null) {
                 if (isGutenberg) {
                     if (ln.contains("START OF THE PROJECT GUTENBERG EBOOK")) {
-                        inBlock=true;
+                        inBlock = true; //start capture
                         continue;
                     }
                     if (ln.contains("END OF THE PROJECT GUTENBERG EBOOK")) {
-                        inBlock= false;
-                        break;
+                        break; //stop capture
                     }
                 }
-                if (auth.isEmpty()&&ln.contains("Author:")) {
-                    auth = ln.substring(ln.indexOf("Author:")+7).trim();
+                //extract author if not already set
+                if (auth.isEmpty() && ln.contains("Author:")) {
+                    auth = ln.substring(ln.indexOf("Author:") + 7).trim();
                 }
-                if (ttl.isEmpty()&&ln.contains("Title:")) {
-                    ttl = ln.substring(ln.indexOf("Title:")+6).trim();
+                //extract title if not already set
+                if (ttl.isEmpty() && ln.contains("Title:")) {
+                    ttl = ln.substring(ln.indexOf("Title:") + 6).trim();
                 }
+                //append to text if in capture block
                 if (inBlock) text.append(ln).append("\n");
             }
         }
+        //prepare field values
         String full = text.toString().trim();
-        String stemmed = stem(full);
-        String filtered = removeStops(full);
+        String stemmed = stem(full);      //apply stemming
+        String filtered = removeStops(full); //apply stop-word removal
+        //add fields to document
         doc.add(new TextField("content",full,TextField.Store.YES));
         doc.add(new TextField("stemcontent",stemmed,TextField.Store.YES));
         doc.add(new TextField("stopcontent",filtered,TextField.Store.YES));
@@ -216,40 +241,43 @@ public class Indexer {
         doc.add(new TextField("filename",file.getName(),StringField.Store.YES));
         doc.add(new TextField("filepath",file.getAbsolutePath(),StringField.Store.YES));
         doc.add(new TextField("modified",Long.toString(file.lastModified()),StringField.Store.YES));
+        //return document
         return doc;
     }
 
     /**
-     * Applies Porter stemming to inputted text.
-     *
-     * @param, input raw text for stemming
-     * @return, string containing stemmed tokens seperated by space
-     * @throws, IOException if stemming fails during processing
+     * Applies Porter stemming to input text
+     * @param input, raw text to stem
+     * @return space-separated stemmed tokens
+     * @throws IOException on token stream errors
      */
     public static String stem(String input) throws IOException {
         StandardTokenizer tokenizer = new StandardTokenizer();
         tokenizer.setReader(new StringReader(input));
-        TokenStream ts = new LowerCaseFilter(tokenizer);
-        ts = new PorterStemFilter(ts);
+        TokenStream ts = new LowerCaseFilter(tokenizer);  //convert to lowercase
+        ts = new PorterStemFilter(ts);                    //apply stemming
         ts.reset();
         StringBuilder out = new StringBuilder();
         CharTermAttribute attr = ts.addAttribute(CharTermAttribute.class);
-        while (ts.incrementToken()) out.append(attr.toString()).append(" ");
+        while (ts.incrementToken()) {
+            out.append(attr.toString()).append(" ");
+        }
         ts.end(); ts.close();
         return out.toString().trim();
     }
 
     /**
-     * Filters out stop words from text
-     *
-     * @param input, the raw text to be filtered
-     * @return, a string containing text with stop words removed, separated by a space
+     * Removes stop words from input text.
+     * @param input, raw text to filter
+     * @return filtered text without stop words
      */
     public static String removeStops(String input) {
         StringBuilder sb = new StringBuilder();
-        for (String t: input.split("\\W+"))
-            if (!t.isEmpty() && !STOP_WORDS.contains(t.toLowerCase()))
+        for (String t : input.split("\\W+")) {
+            if (!t.isEmpty() && !STOP_WORDS.contains(t.toLowerCase())) {
                 sb.append(t).append(" ");
+            }
+        }
         return sb.toString().trim();
     }
 }
