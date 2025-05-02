@@ -263,7 +263,7 @@ public class GUI extends JFrame {
      */
     public static void main(String[] args) {
         String idxPath = "./IndexedData";
-        boolean showExplain = true;
+        boolean showExplain = false;
         int maxRes = 5;
         SwingUtilities.invokeLater(new Runnable() {
             @Override
