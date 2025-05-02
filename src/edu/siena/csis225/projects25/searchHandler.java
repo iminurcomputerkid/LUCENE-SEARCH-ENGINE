@@ -20,7 +20,9 @@ import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.apache.lucene.index.DirectoryReader;
-
+import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.queryparser.classic.QueryParser;
 
 /**
  * Handles the command line search of user query .
@@ -36,16 +38,16 @@ public class searchHandler {
     private Analyzer analyzr;
     private LuceneSearcher luceneSrc;
     private int maxResults;
-    
+
     private String searchField = "content";
     private boolean phraseOnly = false;
-    
 
     /**
      * Constructor for searchHandler.
      *
-     * @param idxPath,  path of lucene index.
-     * @param showExplain, If lucene index, include full explanations in results.
+     * @param idxPath, path of lucene index.
+     * @param showExplain, If lucene index, include full explanations in
+     * results.
      * @param maxResults, Maximum results to return.
      * @throws IOException, if index opening fails.
      */
@@ -60,7 +62,8 @@ public class searchHandler {
     }
 
     /**
-     * Executes a search for the  query string and returns formatted results from formatter class.
+     * Executes a search for the query string and returns formatted results from
+     * formatter class.
      *
      * @param rawQry, The raw search query.
      * @return Formatted results as a String.
@@ -68,18 +71,36 @@ public class searchHandler {
      * @throws ParseException
      * @throws InvalidTokenOffsetsException
      */
-    
-    public String search(String rawQry) throws IOException, ParseException, InvalidTokenOffsetsException {
-        qryHandler.setInputQuery(rawQry);
-        qryHandler.processQuery();
-        Query q = qryHandler.getQuery();
-        if (q == null) {
+    public String search(String rawQry)
+            throws IOException, ParseException, InvalidTokenOffsetsException {
+
+        String text = rawQry == null ? "" : rawQry.trim();
+        if (text.isEmpty()) {
             return "";
         }
+
+        final String qstr;
+        if (phraseOnly) {
+            qstr = "\"" + text.replaceAll("^\"|\"$", "") + "\"";
+        } else {
+            qstr = text.endsWith("*") ? text : text + "*";
+        }
+
+        QueryParser parser = new QueryParser(searchField, analyzr);
+        parser.setAllowLeadingWildcard(true);
+        Query q = parser.parse(qstr);
+
         TopDocs docs = luceneSrc.search(q);
-        // attempting to increase precision score by limiting fields : Set<String> desiredFields = new HashSet<>(Arrays.asList("content", "stemcontent"));
-        Set<String> desiredFields = new HashSet<>(Arrays.asList( "content", "stemcontent", "stopcontent", "author", "title", "filepath", "filename", "modified"));
-        return Formatter.fromTopDocs(luceneSrc.getIndexSearcher(), q, docs, analyzr, desiredFields, showExplain);
+
+        Set<String> desiredFields = new HashSet<>(Arrays.asList("content", "stemcontent", "stopcontent", "author", "title", "filepath", "filename", "modified"));
+        return Formatter.fromTopDocs(
+                luceneSrc.getIndexSearcher(),
+                q,
+                docs,
+                analyzr,
+                desiredFields,
+                false
+        );
     }
 
     /**
@@ -122,28 +143,34 @@ public class searchHandler {
         }
         System.out.println("search done.");
     }
+
     //sets max Results for GUI slider
     public void setMaxResults(int maxResults) {
-            this.maxResults = maxResults;
-            luceneSrc.setLimit(maxResults);
+        this.maxResults = maxResults;
+        luceneSrc.setLimit(maxResults);
     }
-     public void setSearchField(String field) { 
-         this.searchField = field; 
-     }
-    public void setPhraseOnly(boolean p) { 
-        this.phraseOnly = p; 
+
+    public void setSearchField(String field) {
+        this.searchField = field;
     }
-    public void setShowExplain(boolean e) { 
-        this.showExplain     = e; 
+
+    public void setPhraseOnly(boolean p) {
+        this.phraseOnly = p;
     }
-    public boolean isShowExplain(){ 
-        return this.showExplain; 
+
+    public void setShowExplain(boolean e) {
+        this.showExplain = e;
     }
-    
+
+    public boolean isShowExplain() {
+        return this.showExplain;
+    }
+
     /**
      * Inner class LuceneSearcher facilitates index access and query execution.
      */
     public static class LuceneSearcher {
+
         private org.apache.lucene.store.Directory dir;
         private org.apache.lucene.index.DirectoryReader dirReader;
         private org.apache.lucene.search.IndexSearcher idxSearcher;
@@ -155,21 +182,22 @@ public class searchHandler {
             this.limit = limit;
         }
 
-    public void open() throws IOException {
-        dir = org.apache.lucene.store.FSDirectory.open(new File(idxPath).toPath());
-        var reader = org.apache.lucene.index.DirectoryReader.open(dir);
-        idxSearcher = new org.apache.lucene.search.IndexSearcher(reader);
-        idxSearcher.setSimilarity(new org.apache.lucene.search.similarities.BM25Similarity());
-    }
+        public void open() throws IOException {
+            dir = org.apache.lucene.store.FSDirectory.open(new File(idxPath).toPath());
+            var reader = org.apache.lucene.index.DirectoryReader.open(dir);
+            idxSearcher = new org.apache.lucene.search.IndexSearcher(reader);
+            idxSearcher.setSimilarity(new org.apache.lucene.search.similarities.BM25Similarity());
+        }
+
         public TopDocs search(Query query) throws IOException {
             return idxSearcher.search(query, limit);
         }
+
         //helper for result limit
         public void setLimit(int limit) {
             this.limit = limit;
         }
-        
-        
+
         public org.apache.lucene.search.IndexSearcher getIndexSearcher() {
             return idxSearcher;
         }
