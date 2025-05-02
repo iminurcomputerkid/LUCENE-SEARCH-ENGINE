@@ -70,10 +70,10 @@ public class Formatter {
             if (frag != null && !frag.isEmpty()) {
                 outStr.append("txt snippet: ").append(frag).append("\n");
             }
-            if (showExp) {
-                Explanation exp = searcher.explain(query, sd.doc);
-                outStr.append("Explanation: ").append(exp.toString()).append("\n");
-            }
+             //if (showExp) {
+               // Explanation exp = searcher.explain(query, sd.doc);
+               // outStr.append("Explanation: ").append(exp.toString()).append("\n");
+            //}
             outStr.append("Score: ").append(sd.score).append("\n");
             outStr.append("-----------------------------\n\n");
         }
