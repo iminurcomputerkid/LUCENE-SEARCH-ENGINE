@@ -36,6 +36,10 @@ public class GUI extends JFrame {
     private JLabel sliderLabel;
     private int maxRes;
     private JButton statsButton;
+    
+    private JComboBox<String> fieldCombo;
+    private JCheckBox         phraseCheck;
+    private JCheckBox         explainCheck;
 
 
     /**
@@ -67,26 +71,55 @@ public class GUI extends JFrame {
      * Lays out swing components and executes search
      */
     private void initialize() {
-        JPanel topPanel = new JPanel(new BorderLayout());
+        //search bar, stats and search button
+        JPanel searchRow = new JPanel(new BorderLayout(5,0));
         JLabel label1 = new JLabel("Enter query:");
         searchField = new JTextField(30);
         goButton = new JButton("Search");
         statsButton = new JButton("Stats");
-        topPanel.add(label1, BorderLayout.WEST);
-        topPanel.add(searchField, BorderLayout.CENTER);
+        searchRow.add(label1, BorderLayout.WEST);
+        searchRow.add(searchField, BorderLayout.CENTER);
        // topPanel.add(goButton, BorderLayout.EAST);
-       
        JPanel buttons = new JPanel (new FlowLayout(FlowLayout.RIGHT,5,0));
         buttons.add(goButton);
         buttons.add(statsButton);
-        topPanel.add(buttons, BorderLayout.EAST);
+        searchRow.add(buttons, BorderLayout.EAST);
         
+        //field chooser and chekcboxes
+        String[] fields = {
+          "content","stemcontent","stopcontent",
+          "author","title","filepath","filename","modified"
+        };
+        fieldCombo   = new JComboBox<>(fields);
+        phraseCheck  = new JCheckBox("Phrase only");
+        explainCheck = new JCheckBox("Explain", guiSearchMgr.isShowExplain());
+
+        JPanel optionsRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        optionsRow.add(new JLabel("Field:"));
+        optionsRow.add(fieldCombo);
+        optionsRow.add(phraseCheck);
+        optionsRow.add(explainCheck);
+        
+        //slider
         sliderLabel = new JLabel("Max Results: " + maxRes);
         maxResSlider = new JSlider(JSlider.HORIZONTAL, 1, 1000, maxRes);
         maxResSlider.setMajorTickSpacing(20);
         maxResSlider.setMinorTickSpacing(1);
         maxResSlider.setPaintTicks(true);
         maxResSlider.setPaintLabels(false);
+        
+        JPanel sliderRow = new JPanel(new BorderLayout(5,0));
+        sliderRow.add(sliderLabel,    BorderLayout.WEST);
+        sliderRow.add(maxResSlider,   BorderLayout.CENTER);
+        
+         JPanel northPanel = new JPanel();
+        northPanel.setLayout(new BoxLayout(northPanel, BoxLayout.Y_AXIS));
+        northPanel.add(searchRow);
+        northPanel.add(optionsRow);
+        northPanel.add(sliderRow);
+        add(northPanel, BorderLayout.NORTH);
+        
+        
         displayArea = new JTextArea();
         displayArea.setEditable(false);
         displayArea.setLineWrap(true);
@@ -104,14 +137,7 @@ public class GUI extends JFrame {
                 guiSearchMgr.setMaxResults(val);  
             }
         });
-        JPanel sliderPanel = new JPanel(new BorderLayout(5,5));
-        sliderPanel.add(sliderLabel, BorderLayout.WEST);
-        sliderPanel.add(maxResSlider, BorderLayout.CENTER);
 
-        JPanel northPanel = new JPanel(new BorderLayout(0,10));
-        northPanel.add(topPanel,    BorderLayout.NORTH);
-        northPanel.add(sliderPanel, BorderLayout.SOUTH);
-        add(northPanel, BorderLayout.NORTH);
 
         displayArea = new JTextArea();
         displayArea.setEditable(false);
@@ -126,6 +152,19 @@ public class GUI extends JFrame {
         ActionListener doSearch = ae -> executeSearch();
         goButton.addActionListener(doSearch);
         searchField.addActionListener(doSearch);
+        goButton.addActionListener(e -> executeSearch());
+        searchField.addActionListener(e -> executeSearch());
+        statsButton.addActionListener(e -> runAndShowIndexStats());
+
+        fieldCombo.addActionListener(e ->
+        guiSearchMgr.setSearchField((String)fieldCombo.getSelectedItem())
+        );
+        phraseCheck.addActionListener(e ->
+        guiSearchMgr.setPhraseOnly(phraseCheck.isSelected())
+        );
+    explainCheck.addActionListener(e ->
+        guiSearchMgr.setShowExplain(explainCheck.isSelected())
+    );
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(750, 550);
