@@ -41,10 +41,14 @@ public class Main {
                     isParallel = true;
                     break;
                 case "-cran":
-                    isGutenbergFormat = false;
-                    break;
-                default:
-                    //ignore unknown flags or handle other options here
+                     isGutenbergFormat = false;
+                     if (i + 1 < args.length) {
+                         cranQAfile = args[++i];
+                     } else {
+                         break;
+                     }
+                     break;
+                 default:
             }
         }
 
@@ -90,7 +94,7 @@ public class Main {
             Indexer.run(folderPath, idxFolder, idxMode, isGutenbergFormat);
         }
          //for QA bonus, runs cranfieldQAEvaluator if cranQAfile not null and not gui 
-         /*
+         
          if (!launchGUI && cranQAfile != null) {
             // look for ground truth right next to the QA file
             java.nio.file.Path qaPath    = java.nio.file.Paths.get(cranQAfile);
@@ -108,7 +112,7 @@ public class Main {
             }
             return;
         }
-         */
+         
         // launch search UI
         if (launchGUI) {
             SwingUtilities.invokeLater(() -> {
