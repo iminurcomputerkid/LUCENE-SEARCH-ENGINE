@@ -17,48 +17,59 @@ public class Main {
     /**
      * main method, parses cli arguments to detect -text flag for cli and gui by default, detects -cran flag to run cranfield or guteberg without it, and 
      * -parallel flag to run parallel indexer and normal indexer without it
-     * @param args 
+     * @param args command-line arguments
      */
     public static void main(String[] args) {
-        String folderPath = "./data";         
-        String idxFolder = "./IndexedData";     
-        String idxMode = null;                 
-        boolean launchGUI = true;             
-        boolean showExplanations = false;       
-        int maxOutResults = 5;                  
+        //default data directory
+        String folderPath = "./data";
+        //default index directory
+        String idxFolder = "./IndexedData";
+        //indexing mode key, new, changed, missing or all (by def)
+        String idxMode = null;
+        //flag to launch GUI, if false launch CLI
+        boolean launchGUI = true;
+        //flag to show explanation in results
+        boolean showExplanations = false;
+        //max number of output results
+        int maxOutResults = 5;
+        //format flag to specify Gutenberg, false means Cranfield
         boolean isGutenbergFormat = true;
+        //flag for parallel indexing
         boolean isParallel = false;
+        //path to Cranfield QA file (optional)
         String cranQAfile = null;
 
-        // check flags: -text for CLI, -cran for Cranfield, -parallel for parallel indexing (also under -cran case sets
-        //cranQAfile to QA file passed in as argument)
-            for (int i = 0; i < args.length; i++) {
+        //parse CLI flags
+        for (int i = 0; i < args.length; i++) {
             switch (args[i].toLowerCase()) {
                 case "-text":
+                    //switch to CLI mode if -text passed through
                     launchGUI = false;
                     break;
                 case "-parallel":
+                    //enable parallel indexing if -parallel passed through
                     isParallel = true;
                     break;
                 case "-cran":
-                     isGutenbergFormat = false;
-                     if (i + 1 < args.length) {
-                         cranQAfile = args[++i];
-                     } else {
-                         break;
-                     }
-                     break;
-                 default:
+                    //switch to Cranfield data format if -cran passed through
+                    isGutenbergFormat = false;
+                    //next arg would be QA file path
+                    if (i + 1 < args.length) {
+                        cranQAfile = args[++i];
+                    }
+                    break;
+                default:
+                    // ignore other arguments passed
             }
         }
 
-        // ensure the IndexedData folder exists
+        //ensure index directory exists
         File idxDirObj = new File(idxFolder);
         if (!idxDirObj.exists()) {
             idxDirObj.mkdirs();
         }
 
-        // configuration
+        //print config summary
         System.out.println("Data Folder: " + folderPath);
         System.out.println("Index Folder: " + idxFolder);
         System.out.println("Index Mode: " + (idxMode == null ? "all" : idxMode));
@@ -67,42 +78,45 @@ public class Main {
             : "Cranfield data selected.");
         System.out.println("loading.... please wait");
 
-        // if Cranfield requested, run cleaner first
+        //if Cranfield format selected, run cleaner
         if (!isGutenbergFormat) {
             System.out.println("Running CranfieldMagic...");
             try {
                 CranfieldMagic.magicClean();
+                //switch data folder to CranfieldSeperated
                 folderPath = "./cranfieldSeparated";
+                //clear existing index files
                 File indexDir = new File(idxFolder);
                 if (indexDir.exists()) {
                     for (File f : indexDir.listFiles()) {
                         f.delete();
                     }
-              }
+                }
             } catch (Exception ex) {
                 System.err.println("error separating cranfield: " + ex.getMessage());
                 return;
             }
         }
-        //if parallel selected, run parallel indexer, if not, run normal indexer
-         if (isParallel) {
-                int numThreads  = Runtime.getRuntime().availableProcessors() + 1;
-                int maxQueueSize  = numThreads * 4;
-            PIndexer.run(folderPath,idxFolder,idxMode,isGutenbergFormat,numThreads,maxQueueSize);
+
+        //choose indexing option (normal vs parallel)
+        if (isParallel) {
+            //parallel indexing with thread pool
+            int numThreads = Runtime.getRuntime().availableProcessors() + 1;
+            int maxQueueSize = numThreads * 4;
+            PIndexer.run(folderPath, idxFolder, idxMode, isGutenbergFormat, numThreads, maxQueueSize);
         } else {
-             //index normally
+            //normal single-threaded indexing
             Indexer.run(folderPath, idxFolder, idxMode, isGutenbergFormat);
         }
-         //for QA bonus, runs cranfieldQAEvaluator if cranQAfile not null and not gui 
-         
-         if (!launchGUI && cranQAfile != null) {
-            // look for ground truth right next to the QA file
-            java.nio.file.Path qaPath    = java.nio.file.Paths.get(cranQAfile);
+
+        //if CLI and QA file provided, run CranfieldQAevaluation
+        if (!launchGUI && cranQAfile != null) {
+            //derive ground truth file path from QA file location
+            java.nio.file.Path qaPath = java.nio.file.Paths.get(cranQAfile);
             java.nio.file.Path parentDir = qaPath.getParent();
             String truthPath = (parentDir != null
                                  ? parentDir.resolve("cranfieldGroundTruth.txt").toString()
                                  : "cranfieldGroundTruth.txt");
-
             try {
                 CranfieldQAEvaluator.run(cranQAfile, idxFolder, truthPath);
             } catch (Exception e) {
@@ -110,10 +124,10 @@ public class Main {
                 e.printStackTrace();
                 System.exit(1);
             }
-            return;
+            return; //exit after eval
         }
-         
-        // launch search UI
+
+        //launch search interface, gui if launchGui is true, otherwise, run CLI
         if (launchGUI) {
             SwingUtilities.invokeLater(() -> {
                 try {
