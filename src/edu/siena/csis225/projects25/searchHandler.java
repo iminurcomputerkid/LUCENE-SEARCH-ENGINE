@@ -5,24 +5,14 @@ import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.highlight.InvalidTokenOffsetsException;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Scanner;
 import java.util.Set;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.search.Explanation;
-import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.queryparser.classic.QueryParser;
+import org.apache.lucene.search.MultiTermQuery;
 
 /**
  * Handles the command line search of user query .
@@ -71,6 +61,7 @@ public class searchHandler {
      * @throws ParseException
      * @throws InvalidTokenOffsetsException
      */
+// at the top of searchHandler.java, add:
     public String search(String rawQry)
             throws IOException, ParseException, InvalidTokenOffsetsException {
 
@@ -88,18 +79,23 @@ public class searchHandler {
 
         QueryParser parser = new QueryParser(searchField, analyzr);
         parser.setAllowLeadingWildcard(true);
+        parser.setMultiTermRewriteMethod(MultiTermQuery.SCORING_BOOLEAN_REWRITE);
         Query q = parser.parse(qstr);
 
         TopDocs docs = luceneSrc.search(q);
 
-        Set<String> desiredFields = new HashSet<>(Arrays.asList("content", "stemcontent", "stopcontent", "author", "title", "filepath", "filename", "modified"));
+        Set<String> desiredFields = new HashSet<>(Arrays.asList(
+                "content", "stemcontent", "stopcontent",
+                "author", "title", "filepath", "filename", "modified"
+        ));
+        
         return Formatter.fromTopDocs(
                 luceneSrc.getIndexSearcher(),
                 q,
                 docs,
                 analyzr,
                 desiredFields,
-                false
+                showExplain
         );
     }
 
