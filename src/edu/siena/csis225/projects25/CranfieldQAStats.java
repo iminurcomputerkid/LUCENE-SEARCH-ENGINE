@@ -7,6 +7,9 @@ import java.util.*;
  * This file takes the results from CranfieldQAEvaluator and returns the Macro-F1, Micro-F1 (used to evaluate accuracy by balancing 
  * precision and recall, P(Precision) and, R(Recall)
  * 
+ * To run on myResults.txt (qId, docId), run: java -cp "bin;lib/*" edu.siena.csis225.projects25.CranfieldQAStats myResults.txt cranfield/cranfieldGroundTruth.txt
+
+ * 
  * @author Julien Niles, Riley Pierson, Zi'Aire Tiarado
  * @version 5/2/2025
  */
