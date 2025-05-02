@@ -1,10 +1,13 @@
 package edu.siena.csis225.projects25;
 
+import java.util.Map;
+import java.util.HashMap;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.queryparser.classic.QueryParser;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -19,11 +22,23 @@ import java.util.Set;
  */
 public class queryHandler {
 
-    private static final String[] SEARCH_FIELDS = new String[]{"content", "stemcontent", "stopcontent", "author", "title", "filename", "filepath", "modified"};
+   private static final String[] SEARCH_FIELDS = new String[]{"content", "stemcontent", "stopcontent", "author", "title", "filepath", "modified", "filename"};
+   private static final Map<String,Float> FIELD_BOOSTS = new HashMap<>();
+    static {
+      FIELD_BOOSTS.put("title",       3.0f);
+      FIELD_BOOSTS.put("author",      2.0f);
+      FIELD_BOOSTS.put("content",     1.0f);
+      FIELD_BOOSTS.put("stemcontent", 0.75f);
+      FIELD_BOOSTS.put("stopcontent", 0.50f);
+    }
     
     private Analyzer analyzer;
     private String inputQuery;
     private Query parsedQuery;
+    
+     private String  searchField = SEARCH_FIELDS[0];  
+     private boolean phraseOnly = false;
+
     
     /**
     * Constructs a new queryHandler using StandardAnalyzer.
@@ -56,9 +71,22 @@ public class queryHandler {
         }
         String trimmedQuery = inputQuery.trim();
         String modified = appendWildcards(trimmedQuery);
-        MultiFieldQueryParser parser = new MultiFieldQueryParser(SEARCH_FIELDS, analyzer);
-        parser.setAllowLeadingWildcard(true);
-        parsedQuery = parser.parse(modified);
+        MultiFieldQueryParser mparser = new MultiFieldQueryParser(SEARCH_FIELDS, analyzer);
+        mparser.setAllowLeadingWildcard(true);
+        parsedQuery = mparser.parse(modified);
+        
+        String trimmed = inputQuery.trim();
+        
+      String mod;
+      if (phraseOnly) {
+        mod = "\"" + trimmed.replaceAll("^\"|\"$", "") + "\"";
+      } else {
+        mod = appendWildcards(trimmed);
+      }
+
+      QueryParser parser = new QueryParser(searchField, analyzer);
+      parser.setAllowLeadingWildcard(true);
+      parsedQuery = parser.parse(mod);
     }
     
      /**
