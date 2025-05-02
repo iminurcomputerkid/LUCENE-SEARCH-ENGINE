@@ -8,8 +8,11 @@ import java.io.IOException;
 import java.util.concurrent.*;
 
 /**
- * A drop-in replacement for IndexWriter that uses a thread-pool
+ * A replacement for IndexWriter that uses a thread-pool
  * to handle add/update calls in parallel
+ * 
+ * @author Julien, Zi'Aire, Riley Pierson
+ * @version 4/24/2025
  */
 public class ThreadedIndexWriter extends IndexWriter {
     private final ExecutorService pool;
