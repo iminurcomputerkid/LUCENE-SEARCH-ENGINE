@@ -203,14 +203,14 @@ public class searchHandler {
         }
 
         /**
-         * Opens the index directory and initializes IndexSearcher with BM25 similarity
+         * Opens the index directory and initializes IndexSearcher with Classic similarity
          * @throws IOException on open failure
          */
         public void open() throws IOException {
             dir = org.apache.lucene.store.FSDirectory.open(new File(idxPath).toPath());
             var reader = org.apache.lucene.index.DirectoryReader.open(dir);
             idxSearcher = new org.apache.lucene.search.IndexSearcher(reader);
-            idxSearcher.setSimilarity(new org.apache.lucene.search.similarities.BM25Similarity());
+            idxSearcher.setSimilarity(new org.apache.lucene.search.similarities.ClassicSimilarity());
         }
 
         /**
