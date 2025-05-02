@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+
 /**
  * Formats TopDocs results to readable format
  *
@@ -29,14 +30,14 @@ public class Formatter {
      *
      * @param searcher, IndexSearcher used
      * @param query, executed query
-     * @param topDocs,  TopDocs result
+     * @param topDocs, TopDocs result
      * @param analyzer, the Analyzer used for highlighting
      * @param reqFields, the set of fields to consider
      * @param showExp, if true, list full explanation details
      * @return, formatted string with the search results.
      * @throws IOException
      * @throws InvalidTokenOffsetsException
-     * 
+     *
      */
     public static String fromTopDocs(IndexSearcher searcher, Query query, TopDocs topDocs, Analyzer analyzer, Set<String> reqFields, boolean showExp) throws IOException, InvalidTokenOffsetsException {
         StringBuilder outStr = new StringBuilder();
@@ -70,11 +71,16 @@ public class Formatter {
             if (frag != null && !frag.isEmpty()) {
                 outStr.append("txt snippet: ").append(frag).append("\n");
             }
-             //if (showExp) {
-               // Explanation exp = searcher.explain(query, sd.doc);
-               // outStr.append("Explanation: ").append(exp.toString()).append("\n");
-            //}
+            
+            //shows loat score 
             outStr.append("Score: ").append(sd.score).append("\n");
+
+            //if explain button checked, provides full lucene scoring explanation
+            if (showExp) {
+                Explanation expl = searcher.explain(query, sd.doc);
+                outStr.append(expl.toString()).append("\n");
+            }
+
             outStr.append("-----------------------------\n\n");
         }
         return outStr.toString();
