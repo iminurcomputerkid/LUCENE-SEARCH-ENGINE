@@ -20,12 +20,12 @@ public class Main {
      * @param args 
      */
     public static void main(String[] args) {
-        String folderPath       = "./data";         
-        String idxFolder        = "./IndexedData";     
-        String idxMode          = null;                 
-        boolean launchGUI       = true;             
-        boolean showExplanations= false;       
-        int maxOutResults   = 5;                  
+        String folderPath = "./data";         
+        String idxFolder = "./IndexedData";     
+        String idxMode = null;                 
+        boolean launchGUI = true;             
+        boolean showExplanations = false;       
+        int maxOutResults = 5;                  
         boolean isGutenbergFormat = true;
         boolean isParallel = false;
         String cranQAfile = null;
@@ -44,7 +44,7 @@ public class Main {
                     isGutenbergFormat = false;
                     break;
                 default:
-                    // ignore unknown flags or handle other options here
+                    //ignore unknown flags or handle other options here
             }
         }
 
@@ -90,6 +90,7 @@ public class Main {
             Indexer.run(folderPath, idxFolder, idxMode, isGutenbergFormat);
         }
          //for QA bonus, runs cranfieldQAEvaluator if cranQAfile not null and not gui 
+         /*
          if (!launchGUI && cranQAfile != null) {
             // look for ground truth right next to the QA file
             java.nio.file.Path qaPath    = java.nio.file.Paths.get(cranQAfile);
@@ -107,6 +108,7 @@ public class Main {
             }
             return;
         }
+         */
         // launch search UI
         if (launchGUI) {
             SwingUtilities.invokeLater(() -> {
