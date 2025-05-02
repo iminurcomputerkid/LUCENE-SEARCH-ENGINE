@@ -41,48 +41,63 @@ public class Formatter {
      */
     public static String fromTopDocs(IndexSearcher searcher, Query query, TopDocs topDocs, Analyzer analyzer, Set<String> reqFields, boolean showExp) throws IOException, InvalidTokenOffsetsException {
         StringBuilder outStr = new StringBuilder();
-        long hits = topDocs.totalHits.value;
-        outStr.append("Found ").append(hits).append(" document(s):\n\n");
-        Set<String> required = new HashSet<>(Arrays.asList("filename", "title", "author"));
-        int num = 1;
-        //initializes bolding of word
+        long hits = topDocs.totalHits.value;  //total num matches
+        outStr.append("Found ").append(hits).append(" document(s):\n\n"); //header with count
+
+        // fields to print before snippet
+        Set<String> required = new HashSet<>(Arrays.asList(
+                "filename", "title", "author"));
+        int num = 1; //rank counter
+
+        //HTML formatter to highlight matched terms
         SimpleHTMLFormatter fmt = new SimpleHTMLFormatter("<b>", "</b>");
         QueryScorer qs = new QueryScorer(query);
         Highlighter hl = new Highlighter(fmt, qs);
+
+        //iterate over score docs
         for (ScoreDoc sd : topDocs.scoreDocs) {
-            Document doc = searcher.doc(sd.doc);
-            outStr.append("Result ").append(num++).append(":\n");
-            outStr.append("Filename: ").append(doc.get("filename")).append("\n");
-            outStr.append("Title: ").append(doc.get("title")).append("\n");
-            outStr.append("Author: ").append(doc.get("author")).append("\n");
+            Document doc = searcher.doc(sd.doc); //fetch document by docID
+            outStr.append("Result ").append(num++).append(":\n");  //result header
+
+            //print metadata
+            outStr.append("Filename: ").append(doc.get("filename"))
+                  .append("\n");
+            outStr.append("Title: ").append(doc.get("title"))
+                  .append("\n");
+            outStr.append("Author: ").append(doc.get("author"))
+                  .append("\n");
+
+            // compute snippet
             Set<String> extra = new HashSet<>(reqFields);
             extra.removeAll(required);
             String frag = "";
             for (String field : extra) {
                 String fieldContent = doc.get(field);
                 if (fieldContent != null && !fieldContent.isEmpty()) {
-                    //bolded word
+                    //get best fragment for highlighting
                     frag = hl.getBestFragment(analyzer, field, fieldContent);
                     if (frag != null && !frag.isEmpty()) {
-                        break;
+                        break; // stop at first non-empty snippet
                     }
                 }
             }
             if (frag != null && !frag.isEmpty()) {
-                outStr.append("txt snippet: ").append(frag).append("\n");
+                outStr.append("txt snippet: ").append(frag).append("\n"); // append snippet if possible
             }
             
-            //shows loat score 
-            outStr.append("Score: ").append(sd.score).append("\n");
+            //always show raw score
+            outStr.append("Score: ").append(sd.score)
+                  .append("\n");
 
-            //if explain button checked, provides full lucene scoring explanation
+            // if explain flag is set, include full Lucene score breakdown
             if (showExp) {
                 Explanation expl = searcher.explain(query, sd.doc);
-                outStr.append(expl.toString()).append("\n");
+                outStr.append(expl.toString())
+                      .append("\n");
             }
 
-            outStr.append("-----------------------------\n\n");
+            outStr.append("-----------------------------\n\n"); //separator between results
         }
-        return outStr.toString();
+        return outStr.toString(); //final output
     }
 }
