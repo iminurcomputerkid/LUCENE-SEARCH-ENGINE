@@ -13,6 +13,14 @@ import java.util.Set;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import org.apache.lucene.index.DirectoryReader;
+
 
 /**
  * Handles the command line search of user query .
@@ -28,6 +36,10 @@ public class searchHandler {
     private Analyzer analyzr;
     private LuceneSearcher luceneSrc;
     private int maxResults;
+    
+    private String searchField = "content";
+    private boolean phraseOnly = false;
+    
 
     /**
      * Constructor for searchHandler.
@@ -66,7 +78,7 @@ public class searchHandler {
         }
         TopDocs docs = luceneSrc.search(q);
         // attempting to increase precision score by limiting fields : Set<String> desiredFields = new HashSet<>(Arrays.asList("content", "stemcontent"));
-        Set<String> desiredFields = new HashSet<>(Arrays.asList( "content", "stemcontent", "stopcontent", "author", "title"));
+        Set<String> desiredFields = new HashSet<>(Arrays.asList( "content", "stemcontent", "stopcontent", "author", "title", "filepath", "filename", "modified"));
         return Formatter.fromTopDocs(luceneSrc.getIndexSearcher(), q, docs, analyzr, desiredFields, showExplain);
     }
 
@@ -115,7 +127,19 @@ public class searchHandler {
             this.maxResults = maxResults;
             luceneSrc.setLimit(maxResults);
     }
-
+     public void setSearchField(String field) { 
+         this.searchField = field; 
+     }
+    public void setPhraseOnly(boolean p) { 
+        this.phraseOnly = p; 
+    }
+    public void setShowExplain(boolean e) { 
+        this.showExplain     = e; 
+    }
+    public boolean isShowExplain(){ 
+        return this.showExplain; 
+    }
+    
     /**
      * Inner class LuceneSearcher facilitates index access and query execution.
      */
@@ -144,6 +168,7 @@ public class searchHandler {
         public void setLimit(int limit) {
             this.limit = limit;
         }
+        
         
         public org.apache.lucene.search.IndexSearcher getIndexSearcher() {
             return idxSearcher;
