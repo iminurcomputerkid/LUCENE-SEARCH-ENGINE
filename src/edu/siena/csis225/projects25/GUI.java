@@ -1,11 +1,15 @@
 package edu.siena.csis225.projects25;
 
 import javax.swing.*;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.IOException;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.search.highlight.InvalidTokenOffsetsException;
+
+
 
 /**
  * Simple Swing‐based search GUI
@@ -19,6 +23,10 @@ public class GUI extends JFrame {
     private JTextArea  displayArea;
     private JButton    goButton;
     private searchHandler guiSearchMgr;
+    private JSlider maxResSlider;
+    private JLabel sliderLabel;
+    private int maxRes;
+
 
     /**
      * Constructs the GUI and initializes searcher
@@ -30,13 +38,11 @@ public class GUI extends JFrame {
      */
     public GUI(String idxPath, boolean showExplain, int maxRes) throws IOException {
         super("Search GUI");
+        this.maxRes = maxRes;
         try {
             guiSearchMgr = new searchHandler(idxPath, showExplain, maxRes);
         } catch (IOException e) {
-            JOptionPane.showMessageDialog(this,
-                    "Error initializing search: " + e.getMessage(),
-                    "Init Error",
-                    JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this,"Error initializing search: " + e.getMessage(), "Init Error", JOptionPane.ERROR_MESSAGE);
             System.exit(1);
         }
         initialize();
@@ -53,16 +59,53 @@ public class GUI extends JFrame {
         topPanel.add(label1, BorderLayout.WEST);
         topPanel.add(searchField, BorderLayout.CENTER);
         topPanel.add(goButton, BorderLayout.EAST);
+        
+        sliderLabel = new JLabel("Max Results: " + maxRes);
+        maxResSlider = new JSlider(JSlider.HORIZONTAL, 1, 1000, maxRes);
+        maxResSlider.setMajorTickSpacing(20);
+        maxResSlider.setMinorTickSpacing(1);
+        maxResSlider.setPaintTicks(true);
+        maxResSlider.setPaintLabels(false);
+        displayArea = new JTextArea();
+        displayArea.setEditable(false);
+        displayArea.setLineWrap(true);
+        displayArea.setWrapStyleWord(true);
+        
+        maxResSlider.addChangeListener(new ChangeListener() {
+            @Override
+            public void stateChanged(ChangeEvent e) {
+                int val = maxResSlider.getValue();
+                sliderLabel.setText("Max Results: " + val);
+                GUI.this.maxRes = val;
+                guiSearchMgr.setMaxResults(val);  
+            }
+        });
+        JPanel sliderPanel = new JPanel(new BorderLayout(5,5));
+        sliderPanel.add(sliderLabel, BorderLayout.WEST);
+        sliderPanel.add(maxResSlider, BorderLayout.CENTER);
+
+        JPanel northPanel = new JPanel(new BorderLayout(0,10));
+        northPanel.add(topPanel,    BorderLayout.NORTH);
+        northPanel.add(sliderPanel, BorderLayout.SOUTH);
+        add(northPanel, BorderLayout.NORTH);
 
         displayArea = new JTextArea();
         displayArea.setEditable(false);
         displayArea.setLineWrap(true);
         displayArea.setWrapStyleWord(true);
         JScrollPane sp = new JScrollPane(displayArea, ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-
+        
         setLayout(new BorderLayout());
-        add(topPanel, BorderLayout.NORTH);
+        add(northPanel, BorderLayout.NORTH);
         add(sp, BorderLayout.CENTER);
+        
+        ActionListener doSearch = ae -> executeSearch();
+        goButton.addActionListener(doSearch);
+        searchField.addActionListener(doSearch);
+
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setSize(750, 550);
+        setLocationRelativeTo(null);
 
         goButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent ae) {
@@ -117,8 +160,7 @@ public class GUI extends JFrame {
     public static void main(String[] args) {
         String idxPath = "./IndexedData";
         boolean showExplain = true;
-        int maxRes = 1000; // change as needed
-
+        int maxRes = 5;
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
