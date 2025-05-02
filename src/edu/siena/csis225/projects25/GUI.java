@@ -1,5 +1,6 @@
 package edu.siena.csis225.projects25;
 
+import edu.siena.csis225.projects25.Indexer.Stats;
 import javax.swing.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -8,6 +9,9 @@ import java.awt.event.*;
 import java.io.IOException;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.search.highlight.InvalidTokenOffsetsException;
+import java.nio.file.Paths;
+import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.index.DirectoryReader;
 
 
 
@@ -18,6 +22,11 @@ import org.apache.lucene.search.highlight.InvalidTokenOffsetsException;
  * @author Julien, Riley, Zi’Aire
  */
 public class GUI extends JFrame {
+    
+    private final String inFolder;        
+    private final String outIndexFolder;  
+    private final String modeKey;         
+    private final boolean isGutenberg;
 
     private JTextField searchField;
     private JTextArea  displayArea;
@@ -26,6 +35,7 @@ public class GUI extends JFrame {
     private JSlider maxResSlider;
     private JLabel sliderLabel;
     private int maxRes;
+    private JButton statsButton;
 
 
     /**
@@ -39,6 +49,11 @@ public class GUI extends JFrame {
     public GUI(String idxPath, boolean showExplain, int maxRes) throws IOException {
         super("Search GUI");
         this.maxRes = maxRes;
+        this.outIndexFolder = idxPath;
+        this.inFolder = "./data";
+        this.modeKey = "default";
+        this.isGutenberg = false;
+        
         try {
             guiSearchMgr = new searchHandler(idxPath, showExplain, maxRes);
         } catch (IOException e) {
@@ -56,9 +71,15 @@ public class GUI extends JFrame {
         JLabel label1 = new JLabel("Enter query:");
         searchField = new JTextField(30);
         goButton = new JButton("Search");
+        statsButton = new JButton("Stats");
         topPanel.add(label1, BorderLayout.WEST);
         topPanel.add(searchField, BorderLayout.CENTER);
-        topPanel.add(goButton, BorderLayout.EAST);
+       // topPanel.add(goButton, BorderLayout.EAST);
+       
+       JPanel buttons = new JPanel (new FlowLayout(FlowLayout.RIGHT,5,0));
+        buttons.add(goButton);
+        buttons.add(statsButton);
+        topPanel.add(buttons, BorderLayout.EAST);
         
         sliderLabel = new JLabel("Max Results: " + maxRes);
         maxResSlider = new JSlider(JSlider.HORIZONTAL, 1, 1000, maxRes);
@@ -70,6 +91,9 @@ public class GUI extends JFrame {
         displayArea.setEditable(false);
         displayArea.setLineWrap(true);
         displayArea.setWrapStyleWord(true);
+        
+        statsButton.addActionListener(e -> runAndShowIndexStats());
+
         
         maxResSlider.addChangeListener(new ChangeListener() {
             @Override
@@ -153,6 +177,47 @@ public class GUI extends JFrame {
                     JOptionPane.ERROR_MESSAGE);
         }
     }
+    private void runAndShowIndexStats() {
+    try {
+        long start = System.currentTimeMillis();
+        Stats stats = Indexer.indexFiles( inFolder, outIndexFolder, modeKey, isGutenberg);
+        long end = System.currentTimeMillis();
+
+        int totalDocs;
+        try (DirectoryReader reader = DirectoryReader.open(
+                FSDirectory.open(Paths.get(outIndexFolder))
+             )) {
+            totalDocs = reader.numDocs();
+        }
+
+        String msg = String.format(
+            "Indexing done in %,d ms%n" +
+            "Added:   %d%n" +
+            "Updated: %d%n" +
+            "Removed: %d%n" +
+            "Total Docs: %d",
+            (end - start),
+            stats.newDocs,
+            stats.updatedDocs,
+            stats.deletedDocs,
+            totalDocs
+        );
+
+        JOptionPane.showMessageDialog(
+            this,
+            msg,
+            "Indexing Statistics",
+            JOptionPane.INFORMATION_MESSAGE
+        );
+    } catch (Exception ex) {
+        JOptionPane.showMessageDialog(
+            this,
+            "Error during indexing:\n" + ex.getMessage(),
+            "Indexing Error",
+            JOptionPane.ERROR_MESSAGE
+        );
+    }
+}
 
     /**
      * Launches GUI.
