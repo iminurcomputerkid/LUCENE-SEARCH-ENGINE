@@ -5,7 +5,6 @@ import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.highlight.InvalidTokenOffsetsException;
-
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -25,25 +24,25 @@ public class searchHandler {
 
     private String idxPath;
     private boolean showExplain;
-    private int resultLimit;
     private queryHandler qryHandler;
     private Analyzer analyzr;
     private LuceneSearcher luceneSrc;
+    private int maxResults;
 
     /**
      * Constructor for searchHandler.
      *
      * @param idxPath,  path of lucene index.
      * @param showExplain, If lucene index, include full explanations in results.
-     * @param resultLimit, Maximum results to return.
+     * @param maxResults, Maximum results to return.
      * @throws IOException, if index opening fails.
      */
-    public searchHandler(String idxPath, boolean showExplain, int resultLimit) throws IOException {
+    public searchHandler(String idxPath, boolean showExplain, int maxResults) throws IOException {
         this.idxPath = idxPath;
         this.showExplain = showExplain;
-        this.resultLimit = resultLimit;
+        this.maxResults = maxResults;
         this.qryHandler = new queryHandler();
-        this.luceneSrc = new LuceneSearcher(idxPath, resultLimit);
+        this.luceneSrc = new LuceneSearcher(idxPath, maxResults);
         this.luceneSrc.open();
         this.analyzr = qryHandler.getAnalyzer();
     }
@@ -66,7 +65,8 @@ public class searchHandler {
             return "";
         }
         TopDocs docs = luceneSrc.search(q);
-        Set<String> desiredFields = new HashSet<>(Arrays.asList( "content", "stemcontent", "stopcontent", "author", "title", "filename", "filepath", "modified"));
+        // attempting to increase precision score by limiting fields : Set<String> desiredFields = new HashSet<>(Arrays.asList("content", "stemcontent"));
+        Set<String> desiredFields = new HashSet<>(Arrays.asList( "content", "stemcontent", "stopcontent", "author", "title"));
         return Formatter.fromTopDocs(luceneSrc.getIndexSearcher(), q, docs, analyzr, desiredFields, showExplain);
     }
 
@@ -74,7 +74,7 @@ public class searchHandler {
      * Initiates and continues CLI searching prcoess with user.
      */
     public void startCLI() {
-        Scanner inScanner = new Scanner(System.in);
+        Scanner scnr = new Scanner(System.in);
         System.out.println("query instructions:");
         System.out.println("1. Simple: Type a word (e.g., shakespeare) → auto becomes 'shakespeare*'");
         System.out.println("2. Fielded: Use 'field:term' (e.g., author:shakespeare) → auto becomes 'author:shakespeare*'");
@@ -85,7 +85,7 @@ public class searchHandler {
 
         while (true) {
             System.out.print("query> ");
-            String userInput = inScanner.nextLine();
+            String userInput = scnr.nextLine();
             if (userInput == null || userInput.trim().isEmpty()) {
                 break;
             }
@@ -101,7 +101,7 @@ public class searchHandler {
                 ex.printStackTrace();
             }
         }
-        inScanner.close();
+        scnr.close();
         try {
             luceneSrc.close();
         } catch (IOException e) {
@@ -109,6 +109,11 @@ public class searchHandler {
             e.printStackTrace();
         }
         System.out.println("search done.");
+    }
+    //sets max Results for GUI slider
+    public void setMaxResults(int maxResults) {
+            this.maxResults = maxResults;
+            luceneSrc.setLimit(maxResults);
     }
 
     /**
@@ -130,12 +135,16 @@ public class searchHandler {
         dir = org.apache.lucene.store.FSDirectory.open(new File(idxPath).toPath());
         var reader = org.apache.lucene.index.DirectoryReader.open(dir);
         idxSearcher = new org.apache.lucene.search.IndexSearcher(reader);
-        idxSearcher.setSimilarity(new org.apache.lucene.search.similarities.ClassicSimilarity());
+        idxSearcher.setSimilarity(new org.apache.lucene.search.similarities.BM25Similarity());
     }
         public TopDocs search(Query query) throws IOException {
             return idxSearcher.search(query, limit);
         }
-
+        //helper for result limit
+        public void setLimit(int limit) {
+            this.limit = limit;
+        }
+        
         public org.apache.lucene.search.IndexSearcher getIndexSearcher() {
             return idxSearcher;
         }
