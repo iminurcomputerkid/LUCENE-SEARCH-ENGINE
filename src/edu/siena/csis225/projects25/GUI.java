@@ -13,8 +13,6 @@ import java.nio.file.Paths;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.index.DirectoryReader;
 
-
-
 /**
  * Simple Swing‐based search GUI
  *
@@ -22,25 +20,24 @@ import org.apache.lucene.index.DirectoryReader;
  * @author Julien, Riley, Zi’Aire
  */
 public class GUI extends JFrame {
-    
-    private final String inFolder;        
-    private final String outIndexFolder;  
-    private final String modeKey;         
+
+    private final String inFolder;
+    private final String outIndexFolder;
+    private final String modeKey;
     private final boolean isGutenberg;
 
     private JTextField searchField;
-    private JTextArea  displayArea;
-    private JButton    goButton;
+    private JTextArea displayArea;
+    private JButton goButton;
     private searchHandler guiSearchMgr;
     private JSlider maxResSlider;
     private JLabel sliderLabel;
     private int maxRes;
     private JButton statsButton;
-    
-    private JComboBox<String> fieldCombo;
-    private JCheckBox         phraseCheck;
-    private JCheckBox         explainCheck;
 
+    private JComboBox<String> fieldCombo;
+    private JCheckBox phraseCheck;
+    private JCheckBox explainCheck;
 
     /**
      * Constructs the GUI and initializes searcher
@@ -57,11 +54,11 @@ public class GUI extends JFrame {
         this.inFolder = "./data";
         this.modeKey = "default";
         this.isGutenberg = false;
-        
+
         try {
             guiSearchMgr = new searchHandler(idxPath, showExplain, maxRes);
         } catch (IOException e) {
-            JOptionPane.showMessageDialog(this,"Error initializing search: " + e.getMessage(), "Init Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Error initializing search: " + e.getMessage(), "Init Error", JOptionPane.ERROR_MESSAGE);
             System.exit(1);
         }
         initialize();
@@ -72,26 +69,26 @@ public class GUI extends JFrame {
      */
     private void initialize() {
         //search bar, stats and search button
-        JPanel searchRow = new JPanel(new BorderLayout(5,0));
+        JPanel searchRow = new JPanel(new BorderLayout(5, 0));
         JLabel label1 = new JLabel("Enter query:");
         searchField = new JTextField(30);
         goButton = new JButton("Search");
         statsButton = new JButton("Stats");
         searchRow.add(label1, BorderLayout.WEST);
         searchRow.add(searchField, BorderLayout.CENTER);
-       // topPanel.add(goButton, BorderLayout.EAST);
-       JPanel buttons = new JPanel (new FlowLayout(FlowLayout.RIGHT,5,0));
+        // topPanel.add(goButton, BorderLayout.EAST);
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
         buttons.add(goButton);
         buttons.add(statsButton);
         searchRow.add(buttons, BorderLayout.EAST);
-        
+
         //field chooser and chekcboxes
         String[] fields = {
-          "content","stemcontent","stopcontent",
-          "author","title","filepath","filename","modified"
+            "content", "stemcontent", "stopcontent",
+            "author", "title", "filepath", "filename", "modified"
         };
-        fieldCombo   = new JComboBox<>(fields);
-        phraseCheck  = new JCheckBox("Phrase only");
+        fieldCombo = new JComboBox<>(fields);
+        phraseCheck = new JCheckBox("Phrase only");
         explainCheck = new JCheckBox("Explain", guiSearchMgr.isShowExplain());
 
         JPanel optionsRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
@@ -99,7 +96,7 @@ public class GUI extends JFrame {
         optionsRow.add(fieldCombo);
         optionsRow.add(phraseCheck);
         optionsRow.add(explainCheck);
-        
+
         //slider
         sliderLabel = new JLabel("Max Results: " + maxRes);
         maxResSlider = new JSlider(JSlider.HORIZONTAL, 1, 1000, maxRes);
@@ -107,64 +104,66 @@ public class GUI extends JFrame {
         maxResSlider.setMinorTickSpacing(1);
         maxResSlider.setPaintTicks(true);
         maxResSlider.setPaintLabels(false);
-        
-        JPanel sliderRow = new JPanel(new BorderLayout(5,0));
-        sliderRow.add(sliderLabel,    BorderLayout.WEST);
-        sliderRow.add(maxResSlider,   BorderLayout.CENTER);
-        
-         JPanel northPanel = new JPanel();
+
+        JPanel sliderRow = new JPanel(new BorderLayout(5, 0));
+        sliderRow.add(sliderLabel, BorderLayout.WEST);
+        sliderRow.add(maxResSlider, BorderLayout.CENTER);
+
+        JPanel northPanel = new JPanel();
         northPanel.setLayout(new BoxLayout(northPanel, BoxLayout.Y_AXIS));
         northPanel.add(searchRow);
         northPanel.add(optionsRow);
         northPanel.add(sliderRow);
         add(northPanel, BorderLayout.NORTH);
-        
-        
+
         displayArea = new JTextArea();
         displayArea.setEditable(false);
         displayArea.setLineWrap(true);
         displayArea.setWrapStyleWord(true);
-        
+
         statsButton.addActionListener(e -> runAndShowIndexStats());
 
-        
         maxResSlider.addChangeListener(new ChangeListener() {
             @Override
             public void stateChanged(ChangeEvent e) {
                 int val = maxResSlider.getValue();
                 sliderLabel.setText("Max Results: " + val);
                 GUI.this.maxRes = val;
-                guiSearchMgr.setMaxResults(val);  
+                guiSearchMgr.setMaxResults(val);
             }
         });
-
 
         displayArea = new JTextArea();
         displayArea.setEditable(false);
         displayArea.setLineWrap(true);
         displayArea.setWrapStyleWord(true);
-        JScrollPane sp = new JScrollPane(displayArea, ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        
+        JScrollPane sp = new JScrollPane(displayArea, ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+
         setLayout(new BorderLayout());
         add(northPanel, BorderLayout.NORTH);
         add(sp, BorderLayout.CENTER);
-        
+
         ActionListener doSearch = ae -> executeSearch();
         goButton.addActionListener(doSearch);
         searchField.addActionListener(doSearch);
-        goButton.addActionListener(e -> executeSearch());
         searchField.addActionListener(e -> executeSearch());
         statsButton.addActionListener(e -> runAndShowIndexStats());
 
-        fieldCombo.addActionListener(e ->
-        guiSearchMgr.setSearchField((String)fieldCombo.getSelectedItem())
-        );
-        phraseCheck.addActionListener(e ->
-        guiSearchMgr.setPhraseOnly(phraseCheck.isSelected())
-        );
-    explainCheck.addActionListener(e ->
-        guiSearchMgr.setShowExplain(explainCheck.isSelected())
-    );
+        fieldCombo.addActionListener(e -> {
+            guiSearchMgr.setSearchField((String) fieldCombo.getSelectedItem());
+            executeSearch();    
+        });
+
+        phraseCheck.addActionListener(e -> {
+            guiSearchMgr.setPhraseOnly(phraseCheck.isSelected());
+            executeSearch();    
+        });
+
+        explainCheck.addActionListener(e -> {
+            guiSearchMgr.setShowExplain(explainCheck.isSelected());
+            executeSearch();  
+        });
+
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(750, 550);
@@ -188,8 +187,8 @@ public class GUI extends JFrame {
     }
 
     /**
-     * reads query string from the text field, runs the search, and updates the display area
-     * shows a warning message if field is empty.
+     * reads query string from the text field, runs the search, and updates the
+     * display area shows a warning message if field is empty.
      */
     private void executeSearch() {
         String qry = searchField.getText().trim();
@@ -203,7 +202,7 @@ public class GUI extends JFrame {
         try {
             String result = guiSearchMgr.search(qry);
             displayArea.setText(
-                (result == null || result.isEmpty())
+                    (result == null || result.isEmpty())
                     ? "No results found."
                     : result
             );
@@ -216,47 +215,48 @@ public class GUI extends JFrame {
                     JOptionPane.ERROR_MESSAGE);
         }
     }
+
     private void runAndShowIndexStats() {
-    try {
-        long start = System.currentTimeMillis();
-        Stats stats = Indexer.indexFiles( inFolder, outIndexFolder, modeKey, isGutenberg);
-        long end = System.currentTimeMillis();
+        try {
+            long start = System.currentTimeMillis();
+            Stats stats = Indexer.indexFiles(inFolder, outIndexFolder, modeKey, isGutenberg);
+            long end = System.currentTimeMillis();
 
-        int totalDocs;
-        try (DirectoryReader reader = DirectoryReader.open(
-                FSDirectory.open(Paths.get(outIndexFolder))
-             )) {
-            totalDocs = reader.numDocs();
+            int totalDocs;
+            try (DirectoryReader reader = DirectoryReader.open(
+                    FSDirectory.open(Paths.get(outIndexFolder))
+            )) {
+                totalDocs = reader.numDocs();
+            }
+
+            String msg = String.format(
+                    "Indexing done in %,d ms%n"
+                    + "Added:   %d%n"
+                    + "Updated: %d%n"
+                    + "Removed: %d%n"
+                    + "Total Docs: %d",
+                    (end - start),
+                    stats.newDocs,
+                    stats.updatedDocs,
+                    stats.deletedDocs,
+                    totalDocs
+            );
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    msg,
+                    "Indexing Statistics",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Error during indexing:\n" + ex.getMessage(),
+                    "Indexing Error",
+                    JOptionPane.ERROR_MESSAGE
+            );
         }
-
-        String msg = String.format(
-            "Indexing done in %,d ms%n" +
-            "Added:   %d%n" +
-            "Updated: %d%n" +
-            "Removed: %d%n" +
-            "Total Docs: %d",
-            (end - start),
-            stats.newDocs,
-            stats.updatedDocs,
-            stats.deletedDocs,
-            totalDocs
-        );
-
-        JOptionPane.showMessageDialog(
-            this,
-            msg,
-            "Indexing Statistics",
-            JOptionPane.INFORMATION_MESSAGE
-        );
-    } catch (Exception ex) {
-        JOptionPane.showMessageDialog(
-            this,
-            "Error during indexing:\n" + ex.getMessage(),
-            "Indexing Error",
-            JOptionPane.ERROR_MESSAGE
-        );
     }
-}
 
     /**
      * Launches GUI.
