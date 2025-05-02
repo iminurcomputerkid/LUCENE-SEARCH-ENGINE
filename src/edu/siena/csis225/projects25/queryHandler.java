@@ -22,123 +22,126 @@ import java.util.Set;
  */
 public class queryHandler {
 
-   private static final String[] SEARCH_FIELDS = new String[]{"content", "stemcontent", "stopcontent", "author", "title", "filepath", "modified", "filename"};
+    // fields to search when using multi-field parser
+    private static final String[] SEARCH_FIELDS = new String[]{
+        "content", "stemcontent", "stopcontent",
+        "author", "title", "filepath", "modified", "filename"
+    };
     
-    private Analyzer analyzer;
-    private String inputQuery;
-    private Query parsedQuery;
+    private Analyzer analyzer;    //analyzer for parsing, highlighting an dtokenizing
+    private String inputQuery;    //raw user input string
+    private Query parsedQuery;    //resulting Lucene Query object
     
-     private String  searchField = SEARCH_FIELDS[0];  
-     private boolean phraseOnly = false;
+    private String searchField = SEARCH_FIELDS[0];  //default single-field search
+    private boolean phraseOnly = false;             //flag for phrase-only queries
 
-    
     /**
-    * Constructs a new queryHandler using StandardAnalyzer.
-    */
+     * Constructs a new queryHandler using StandardAnalyzer.
+     */
     public queryHandler() {
+        //initialize analyzer for tokenization and filtering
         this.analyzer = new StandardAnalyzer();
     }
     
     /**
-     * Sets the user inputted raw query to the query to be processed.
+     * Sets the raw user query string to be processed
      *
-     * @param query, the user's raw query
+     * @param query the user's raw query input
      */
     public void setInputQuery(String query) {
         this.inputQuery = query;
     }
     
     /**
-     * Transforms the previously set input query into a Lucene query:
-     * Splits the input into tokens, appending trailing wildcards to each term
-     * except Boolean operators and quoted phrases. parses the result using a
-     * MultiFieldQueryParser over search fields.
+     * Processes the previously set input query into a Lucene Query:
+     * splits tokens, appends wildcards (unless operators or phrases),
+     * and parses using MultiFieldQueryParser or single-field parser
      *
-     * @throws ParseException, if the parsed query string is invalid
+     * @throws ParseException if parsing fails
      */
     public void processQuery() throws ParseException {
+        // if no input or blank, skip processing
         if (inputQuery == null || inputQuery.trim().isEmpty()) {
             parsedQuery = null;
             return;
         }
-        String trimmedQuery = inputQuery.trim();
-        String modified = appendWildcards(trimmedQuery);
-        MultiFieldQueryParser mparser = new MultiFieldQueryParser(SEARCH_FIELDS, analyzer);
-        mparser.setAllowLeadingWildcard(true);
-        parsedQuery = mparser.parse(modified);
-        
+        //trim whitespace
         String trimmed = inputQuery.trim();
-        
-      String mod;
-      if (phraseOnly) {
-        mod = "\"" + trimmed.replaceAll("^\"|\"$", "") + "\"";
-      } else {
-        mod = appendWildcards(trimmed);
-      }
+        //if phrase-only mode, wrap in quotes. else append wildcards
+        String mod;
+        if (phraseOnly) {
+            //remove existing quotes before wrapping
+            mod = "\"" + trimmed.replaceAll("^\"|\"$", "") + "\"";
+        } else {
+            mod = appendWildcards(trimmed);
+        }
 
-      QueryParser parser = new QueryParser(searchField, analyzer);
-      parser.setAllowLeadingWildcard(true);
-      parsedQuery = parser.parse(mod);
+        //parse on the single selected field with leading wildcards allowed
+        QueryParser parser = new QueryParser(searchField, analyzer);
+        parser.setAllowLeadingWildcard(true);
+        parsedQuery = parser.parse(mod);
     }
     
-     /**
-     * Appends a '*' to each token in the query except
-     * for Boolean operators and terms already have a wildcard. Also
-     * preserves quoted phrases (no wildcard appended).
+    /**
+     * Appends '*' wildcard to each token except boolean operators, quoted phrases,
+     * or tokens that already contain a wildcard. Maintains fielded queries.
      *
-     * @param queryStr, the raw query in need of wildcard
-     * @return a new query with wildcards applied
+     * @param queryStr, raw query needing wildcards
+     * @return modified, query with trailing wildcards
      */
     private String appendWildcards(String queryStr) {
-        //splits query into tokens
+        //split on whitespace
         String[] parts = queryStr.split("\\s+");
-        //collection of operators that won't receive wildcards, essential for functional boolean queries
-        Set<String> operators = new HashSet<>(Arrays.asList("AND", "OR", "NOT", "and", "or", "not"));
+        //boolean operators to leave untouched
+        Set<String> operators = new HashSet<>(
+            Arrays.asList("AND","OR","NOT","and","or","not")
+        );
         StringBuilder sb = new StringBuilder();
         for (String part : parts) {
-            //if boolean operator detected in query, leave it alone. Do not append operator with "*"
             if (operators.contains(part)) {
+                //boolean operator, append as is
                 sb.append(part).append(" ");
                 continue;
             }
-            //if query is a quote, leave it alone.
             if (part.startsWith("\"") && part.endsWith("\"")) {
+                //quoted phrase, leave alone
                 sb.append(part).append(" ");
                 continue;
             }
-            //processes value of fielded queries, appends wildcard to value
             if (part.contains(":")) {
-                String[] segments = part.split(":", 2);
-                String field = segments[0];
-                String val = segments[1];
+                //fielded query: split into field and value
+                String[] seg = part.split(":", 2);
+                String field = seg[0];
+                String val = seg[1];
                 if (!val.contains("*")) {
-                    val = val + "*";
+                    val = val + "*"; //append wildcard if missing
                 }
                 sb.append(field).append(":").append(val).append(" ");
-             //otherwise, should be a regular query. Append wildcard to token. 
             } else {
+                //regular token: append wildcard if missing
                 if (!part.contains("*")) {
                     part = part + "*";
                 }
                 sb.append(part).append(" ");
             }
         }
+        //return trimmed result
         return sb.toString().trim();
     }
     
     /**
-     * Returns the last parsed query
+     * Returns the last parsed Lucene Query.
      *
-     * @return the Lucene Query, or null if none found
+     * @return parsed Query, or null if none
      */
     public Query getQuery() {
         return parsedQuery;
     }
     
-     /**
-     * Returns the analyzer used for parsing and highlighting.
+    /**
+     * Returns the Analyzer used for parsing/highlighting.
      *
-     * @return the Analyzer, null if analyzer not found
+     * @return Analyzer instance
      */
     public Analyzer getAnalyzer() {
         return analyzer;
