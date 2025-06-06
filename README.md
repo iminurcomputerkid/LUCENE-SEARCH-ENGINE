@@ -6,7 +6,7 @@
 */src/edu/siena/csis225/projects25*  contains program source code
 
 **Abstract**<p>
-Our project goals involve implementing a custom document retrieval system that efficiently indexes and searches extensive text-based data using Apache Lucene’s capabilities. Our system utilizes one of Lucene’s prominent ranking algorithms, TF-IDF, to index several critical fields of interest, including content, author, and title. After indexing, we expect our system to return relevant search results based on user-inputted queries. 
+Our project goals involve implementing a custom document retrieval system that efficiently indexes and searches extensive text-based data using Apache Lucene’s capabilities. Our system utilizes one of Lucene’s  ranking algorithms, TF-IDF, to index several critical fields of interest, including content, author, and title. After indexing, we expect our system to return relevant search results based on user-inputted queries. 
 
 The star next to the feature means bonus implementations.
 
